@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DinoFiles • v4 (Editor + A4 Scan)</title>
+<meta name="description" content="DinoFiles v4 — workspace edytora stron: dodaj/usuń/przestaw, obrót zdjęć, A4 scan PDF, scalanie i eksport.">
+<style>
+:root{
+  --bg:#0b1520;--panel:#0f1c2a;--panel2:#0b1824;--text:#e7f0f8;--muted:#9fb3c8;--line:#1e2a3a;
+  --ok:#27d07d;--ok2:#2fe096;--warn:#ffb020;--bad:#ff5d5d;--btn:#152335;--btn2:#1b2f4a
+}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:linear-gradient(180deg,#0b1520,#0d1a27);color:var(--text)}
+.wrapper{max-width:1200px;margin:22px auto;padding:0 16px}
+.header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.logo{width:38px;height:38px;border-radius:12px;background:#0d1a27;display:grid;place-items:center;border:1px solid var(--line)}
+.logo::before{content:'🦖'}
+h1{margin:0;font-size:22px;font-weight:900}
+.badge{font-size:12px;background:#113024;border:1px solid #1b633f;color:#9fe9c4;padding:2px 8px;border-radius:999px;margin-left:6px}
+.sub{color:var(--muted);margin:.25rem 0 0 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.drop{border:2px dashed #2b3a4f;border-radius:14px;padding:18px;text-align:center;background:rgba(255,255,255,.02);color:#cfe2f7}
+.drop.drag{border-color:#5dc9ff;background:rgba(2,164,255,.08)}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.btn{background:var(--btn);border:1px solid var(--line);color:#dff1ff;padding:10px 14px;border-radius:12px;cursor:pointer}
+.btn:hover{background:var(--btn2)}
+.btn.primary{background:linear-gradient(90deg,#16c273,#2fe096);color:#082312;border-color:#2e865b;font-weight:800}
+.btn.danger{background:#2a1620;border-color:#4d1f2a}
+.btn.danger:hover{background:#3b1b28}
+.btn.ghost{background:transparent}
+.pill{display:inline-flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid #163247;border-radius:999px;padding:6px 10px;font-size:13px;color:#cfe2f7}
+.pill b{color:var(--text)}
+a.link{color:#7feec3}
+hr{border:0;border-top:1px solid #1e2a3a;margin:12px 0}
+
+/* Workspace */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.tools{display:flex;gap:10px;flex-wrap:wrap}
+.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}
+.page{background:var(--panel2);border:1px solid #163247;border-radius:14px;padding:8px;position:relative}
+.thumb{width:100%;height:210px;border-radius:10px;background:#07101b;display:grid;place-items:center;overflow:hidden}
+.thumb canvas,.thumb img{max-width:100%;max-height:100%;display:block}
+.meta{margin-top:6px;font-size:12px;color:#cfe2f7}
+.check{display:flex;gap:8px;align-items:center;margin-top:6px;color:#cfe2f7;font-size:13px}
+.actions{position:absolute;top:8px;right:8px;display:flex;gap:6px}
+.iconbtn{background:#16273a;border:1px solid #29425c;border-radius:10px;padding:6px;cursor:pointer}
+.iconbtn:hover{background:#1d3350}
+.small{font-size:12px;color:var(--muted)}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal.open{display:flex}
+.modal-body{background:#0f1c2a;border:1px solid #2a3d57;border-radius:14px;max-width:95vw;max-height:90vh;padding:12px;position:relative}
+.modal-body img{max-width:92vw;max-height:82vh}
+.close{position:absolute;top:8px;right:8px;background:#16273a;border:1px solid #29425c;color:#dff1ff;border-radius:10px;padding:6px 10px;cursor:pointer}
+.footer{color:#9bb8cd;margin:16px 0 40px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <div class="logo" aria-label="DinoFiles"></div>
+    <div>
+      <h1>DinoFiles <span class="badge">v4</span></h1>
+      <p class="sub">Workspace edytora stron (jak iLovePDF): dodaj → usuń → przestaw → obrót zdjęć → eksport do PDF A4 „jak skan”.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <h2 style="margin:0">1) Dodaj pliki</h2>
+        <p class="sub">Wrzucaj wielokrotnie: <span class="mono">JPG / PNG / PDF</span>. To tworzy „strony” w workspace.</p>
+      </div>
+      <div class="pill" id="usagePill">Workspace: <b id="usage">0 stron</b></div>
+    </div>
+
+    <div id="drop" class="drop" style="margin-top:12px">
+      Przeciągnij pliki tutaj lub kliknij: <button id="pick" class="btn ghost" type="button">📁 Wybierz pliki</button>
+      <div class="small" style="margin-top:6px">Drop nie otwiera plików w nowych kartach.</div>
+    </div>
+    <input id="file" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" hidden>
+
+    <div class="btns" style="margin-top:12px">
+      <button id="clearAll" class="btn danger" type="button">🧹 Usuń wszystko</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div>
+        <h2 style="margin:0">2) Workspace — strony</h2>
+        <div class="small">Zaznacz/odznacz, usuwaj, obracaj, zmieniaj kolejność stron (drag&drop).</div>
+      </div>
+      <div class="tools">
+        <button id="selAll" class="btn" type="button">Zaznacz wszystkie</button>
+        <button id="selNone" class="btn" type="button">Odznacz wszystkie</button>
+        <button id="delSel" class="btn danger" type="button">Usuń zaznaczone</button>
+      </div>
+    </div>
+
+    <div id="pages" class="pages"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">3) Eksport</h2>
+    <div class="btns">
+      <button id="exportPdf" class="btn primary" type="button">💾 Eksport do PDF A4 (pełna strona „scan”)</button>
+      <button id="exportPng" class="btn" type="button">🖼️ Eksport stron jako PNG (pobierz osobno)</button>
+    </div>
+    <p class="sub" style="margin-top:8px">
+      PDF A4: zdjęcia są wstawiane w trybie „cover” (wypełniają kartkę, nadmiar przycięty). Auto-obrót: EXIF (jeśli jest) + ręczne ↺/↻.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">4) Wynik</h2>
+    <div id="out" class="sub">Tutaj pojawią się linki do pobrania.</div>
+  </div>
+
+  <p class="footer">DinoFiles v4 • build: <span id="build"></span></p>
+</div>
+
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
+
+<script>
+document.getElementById("build").textContent = new Date().toISOString();
+
+const $ = s => document.querySelector(s);
+const pagesEl = $("#pages"), drop=$("#drop"), fileInput=$("#file"), out=$("#out");
+const pick=$("#pick"), usage=$("#usage");
+const btnClearAll=$("#clearAll"), btnSelAll=$("#selAll"), btnSelNone=$("#selNone"), btnDelSel=$("#delSel");
+const btnExportPdf=$("#exportPdf"), btnExportPng=$("#exportPng");
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js";
+
+// Workspace "pages": each entry is either image or pdf-page reference
+// { id, kind:'image', file, objectUrl, rotationDeg, selected, exifRotation, name }
+// { id, kind:'pdf', file, pdfBytes, pageIndex, selected, name }
+let ws = [];
+let idSeq = 1;
+
+function updateUsage(){ usage.textContent = `${ws.length} stron`; }
+
+function human(bytes){const u=['B','KB','MB','GB'];let i=0,b=bytes;while(b>1024&&i<u.length-1){b/=1024;i++}return b.toFixed(1)+' '+u[i];}
+
+// EXIF orientation (JPEG) -> rotation degrees
+async function getJpegRotation(file){
+  try{
+    if(!/jpe?g/i.test(file.type) && !/\\.jpe?g$/i.test(file.name)) return 0;
+    const buf = new Uint8Array(await file.arrayBuffer());
+    let i=2;
+    while(i < buf.length-1){
+      if(buf[i] !== 0xFF) break;
+      const marker = buf[i+1];
+      const size = (buf[i+2]<<8) + buf[i+3];
+      if(marker === 0xE1){
+        const start = i+4;
+        const exif = String.fromCharCode(...buf.slice(start, start+6));
+        if(exif === "Exif\\u0000\\u0000"){
+          const tiff = start+6;
+          const endian = String.fromCharCode(buf[tiff],buf[tiff+1]);
+          const le = endian === "II";
+          const get16 = (o)=> le ? (buf[o] + (buf[o+1]<<8)) : ((buf[o]<<8) + buf[o+1]);
+          const get32 = (o)=> le ? (buf[o] + (buf[o+1]<<8) + (buf[o+2]<<16) + (buf[o+3]<<24)) :
+                                   ((buf[o]<<24) + (buf[o+1]<<16) + (buf[o+2]<<8) + buf[o+3]);
+          const ifdOffset = get32(tiff+4);
+          let dir = tiff + ifdOffset;
+          const entries = get16(dir);
+          dir += 2;
+          for(let e=0;e<entries;e++){
+            const tag = get16(dir + e*12);
+            if(tag === 0x0112){
+              const value = get16(dir + e*12 + 8);
+              if(value===3) return 180;
+              if(value===6) return 90;
+              if(value===8) return 270;
+              return 0;
+            }
+          }
+        }
+      }
+      i += 2 + size;
+    }
+  }catch(e){}
+  return 0;
+}
+
+async function addFiles(list){
+  const arr = Array.from(list||[]);
+  if(arr.length===0) return;
+
+  for(const f of arr){
+    const isPdf = /\\.pdf$/i.test(f.name) || /pdf/i.test(f.type);
+    const isImg = /jpeg|jpg|png/i.test(f.type);
+    if(!isPdf && !isImg) continue;
+
+    if(isImg){
+      const ex = await getJpegRotation(f);
+      const url = URL.createObjectURL(f);
+      ws.push({
+        id: idSeq++,
+        kind: 'image',
+        file: f,
+        objectUrl: url,
+        rotationDeg: ex,      // start with EXIF
+        exifRotation: ex,
+        selected: true,
+        name: f.name
+      });
+    } else {
+      const pdfBytes = await f.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
+      const pdf = await loadingTask.promise;
+      for(let p=1;p<=pdf.numPages;p++){
+        ws.push({
+          id: idSeq++,
+          kind: 'pdf',
+          file: f,
+          pdfBytes,
+          pageIndex: p-1,
+          selected: true,
+          name: `${f.name} • strona ${p}`
+        });
+      }
+    }
+  }
+
+  render();
+}
+
+function reorder(from, to){
+  const moved = ws.splice(from,1)[0];
+  ws.splice(to,0,moved);
+}
+
+function render(){
+  pagesEl.innerHTML='';
+  updateUsage();
+
+  ws.forEach((p, idx)=>{
+    const card = document.createElement('div');
+    card.className='page';
+    card.draggable = true;
+    card.dataset.idx = idx;
+
+    const actions = document.createElement('div');
+    actions.className='actions';
+
+    const zoom = document.createElement('button');
+    zoom.className='iconbtn'; zoom.title='Lupa / podgląd'; zoom.textContent='🔍';
+
+    const rotL = document.createElement('button');
+    rotL.className='iconbtn'; rotL.title='Obróć w lewo'; rotL.textContent='↺';
+
+    const rotR = document.createElement('button');
+    rotR.className='iconbtn'; rotR.title='Obróć w prawo'; rotR.textContent='↻';
+
+    const del = document.createElement('button');
+    del.className='iconbtn'; del.title='Usuń (X)'; del.textContent='✖';
+
+    actions.appendChild(zoom);
+    if(p.kind==='image'){ actions.appendChild(rotL); actions.appendChild(rotR); }
+    actions.appendChild(del);
+    card.appendChild(actions);
+
+    const thumb = document.createElement('div');
+    thumb.className='thumb';
+    card.appendChild(thumb);
+
+    const meta = document.createElement('div');
+    meta.className='meta';
+    meta.textContent = `${idx+1}. ${p.name}` + (p.kind==='image' ? ` • ${human(p.file.size)} • obrót: ${p.rotationDeg}°` : '');
+    card.appendChild(meta);
+
+    const check = document.createElement('label');
+    check.className='check';
+    const cb = document.createElement('input');
+    cb.type='checkbox'; cb.checked = !!p.selected;
+    cb.onchange = ()=>{ p.selected = cb.checked; };
+    const span = document.createElement('span');
+    span.textContent = 'Uwzględnij w eksporcie';
+    check.appendChild(cb); check.appendChild(span);
+    card.appendChild(check);
+
+    // drag reorder
+    card.addEventListener('dragstart', e=>{
+      e.dataTransfer.setData('text/plain', idx);
+    });
+    card.addEventListener('dragover', e=> e.preventDefault());
+    card.addEventListener('drop', e=>{
+      e.preventDefault();
+      const from = Number(e.dataTransfer.getData('text/plain'));
+      const to = Number(card.dataset.idx);
+      if(Number.isNaN(from)||Number.isNaN(to)||from===to) return;
+      reorder(from,to);
+      render();
+    });
+
+    // content render
+    if(p.kind==='image'){
+      const img = document.createElement('img');
+      img.src = p.objectUrl;
+      img.style.transform = `rotate(${p.rotationDeg}deg)`;
+      img.style.maxWidth='100%'; img.style.maxHeight='100%';
+      thumb.appendChild(img);
+      zoom.onclick = ()=> openModal(p.objectUrl, p.rotationDeg);
+      rotL.onclick = ()=>{ p.rotationDeg = (p.rotationDeg + 270) % 360; render(); };
+      rotR.onclick = ()=>{ p.rotationDeg = (p.rotationDeg + 90) % 360; render(); };
+    } else {
+      (async ()=>{
+        try{
+          const loadingTask = pdfjsLib.getDocument({data: p.pdfBytes});
+          const pdf = await loadingTask.promise;
+          const page = await pdf.getPage(p.pageIndex+1);
+          const viewport = page.getViewport({scale:0.35});
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({canvasContext:ctx,viewport}).promise;
+          thumb.appendChild(canvas);
+          zoom.onclick = ()=> openModal(canvas.toDataURL(), 0);
+        }catch(e){
+          thumb.textContent='Podgląd PDF niedostępny';
+          zoom.onclick = ()=> alert('Podgląd PDF niedostępny.');
+        }
+      })();
+    }
+
+    del.onclick = ()=>{
+      if(p.kind==='image' && p.objectUrl) URL.revokeObjectURL(p.objectUrl);
+      ws.splice(idx,1);
+      render();
+    };
+
+    pagesEl.appendChild(card);
+  });
+}
+
+// Drop zone: prevent browser opening files
+['dragenter','dragover','drop'].forEach(evt=>{
+  window.addEventListener(evt, (e)=>{ e.preventDefault(); }, {passive:false});
+});
+
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', ()=> drop.classList.remove('drag'));
+drop.addEventListener('drop', e=>{
+  e.preventDefault();
+  drop.classList.remove('drag');
+  addFiles(e.dataTransfer.files);
+});
+
+pick.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', e=>{
+  addFiles(e.target.files);
+  fileInput.value = "";
+});
+
+btnClearAll.onclick = ()=>{
+  ws.forEach(p=>{ if(p.kind==='image' && p.objectUrl) URL.revokeObjectURL(p.objectUrl); });
+  ws=[];
+  pagesEl.innerHTML='';
+  out.textContent='Tutaj pojawią się linki do pobrania.';
+  updateUsage();
+};
+
+btnSelAll.onclick = ()=>{ ws.forEach(p=>p.selected=true); render(); };
+btnSelNone.onclick = ()=>{ ws.forEach(p=>p.selected=false); render(); };
+btnDelSel.onclick = ()=>{
+  ws = ws.filter(p=>{
+    if(p.selected){
+      if(p.kind==='image' && p.objectUrl) URL.revokeObjectURL(p.objectUrl);
+      return false;
+    }
+    return true;
+  });
+  render();
+};
+
+// Modal
+const modal = document.createElement('div');
+modal.className='modal';
+modal.innerHTML = '<div class="modal-body"><button class="close">✖</button><div id="modalContent"></div></div>';
+document.body.appendChild(modal);
+const modalContent = modal.querySelector('#modalContent');
+modal.querySelector('.close').onclick = ()=> modal.classList.remove('open');
+modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.classList.remove('open'); });
+
+function openModal(src, rotationDeg){
+  modalContent.innerHTML='';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.transform = rotationDeg ? `rotate(${rotationDeg}deg)` : '';
+  modalContent.appendChild(img);
+  modal.classList.add('open');
+}
+
+// Helpers: draw image to A4 with "cover" scaling (fill page)
+function coverRect(iw, ih, pw, ph){
+  const s = Math.max(pw/iw, ph/ih);
+  const w = iw*s, h = ih*s;
+  const x = (pw - w)/2;
+  const y = (ph - h)/2;
+  return {x,y,w,h};
+}
+
+// Export selected pages to A4 PDF scan-style
+btnExportPdf.onclick = async ()=>{
+  const selected = ws.filter(p=>p.selected);
+  if(selected.length===0){ alert('Zaznacz przynajmniej jedną stronę.'); return; }
+
+  const { PDFDocument, rgb, degrees } = PDFLib;
+  const outPdf = await PDFDocument.create();
+  const A4 = {w:595.28, h:841.89};
+
+  // cache loaded donor PDFs by file name (bytes equality ok for our use)
+  const donorCache = new Map(); // key: pdfBytes (stringified length+first bytes) -> PDFDocument
+  const donorKey = (bytes)=> `${bytes.byteLength}:${new Uint8Array(bytes).slice(0,8).join(',')}`;
+
+  for(const p of selected){
+    const page = outPdf.addPage([A4.w,A4.h]);
+    page.drawRectangle({x:0,y:0,width:A4.w,height:A4.h,color:rgb(1,1,1)});
+
+    if(p.kind==='pdf'){
+      // copy original PDF page as-is (keeps quality)
+      const key = donorKey(p.pdfBytes);
+      let donor = donorCache.get(key);
+      if(!donor){
+        donor = await PDFDocument.load(p.pdfBytes);
+        donorCache.set(key, donor);
+      }
+      const [copied] = await outPdf.copyPages(donor, [p.pageIndex]);
+      // replace blank page with copied page scaled to A4 if needed
+      // Easiest: remove the blank page and add copied; but we want A4 output consistently.
+      // We'll scale copied to A4 by embedding it as XObject is complex; instead just add copied page and set size if possible:
+      const w = copied.getWidth(), h = copied.getHeight();
+      // If page is not A4, we keep it as-is to preserve content; most PDFs are A4 anyway.
+      // For consistency, set to A4 and center content using scaling by drawing the page is complex. We'll keep original.
+      outPdf.removePage(outPdf.getPageCount()-1);
+      outPdf.addPage(copied);
+    } else {
+      // image to A4 cover, with manual rotation applied
+      const arr = await p.file.arrayBuffer();
+      const isPng = /png/i.test(p.file.type);
+      const embedded = isPng ? await outPdf.embedPng(arr) : await outPdf.embedJpg(arr);
+
+      const rot = (p.rotationDeg||0) % 360;
+      const w0 = embedded.width, h0 = embedded.height;
+      const rotated = (rot===90 || rot===270);
+      const iw = rotated ? h0 : w0;
+      const ih = rotated ? w0 : h0;
+      const {x,y,w,h} = coverRect(iw, ih, A4.w, A4.h);
+
+      if(rot===0){
+        page.drawImage(embedded, {x, y, width:w, height:h});
+      } else {
+        // rotate around center of page using original dims scaled with "cover"
+        const s = Math.max(A4.w/iw, A4.h/ih);
+        const cx=A4.w/2, cy=A4.h/2;
+        page.drawImage(embedded, {
+          x: cx - (w0*s)/2,
+          y: cy - (h0*s)/2,
+          width: w0*s,
+          height: h0*s,
+          rotate: degrees(rot),
+        });
+      }
+    }
+  }
+
+  const bytes = await outPdf.save();
+  const url = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
+  out.innerHTML = `<a class="link" download="DinoFiles_v4_export.pdf" href="${url}">⬇️ Pobierz PDF „DinoFiles_v4_export.pdf”</a>`;
+};
+
+// Export selected pages as PNG (downloads one-by-one)
+btnExportPng.onclick = async ()=>{
+  const selected = ws.filter(p=>p.selected);
+  if(selected.length===0){ alert('Zaznacz przynajmniej jedną stronę.'); return; }
+
+  // Render each page to canvas A4-ish and download PNG
+  let k = 1;
+  for(const p of selected){
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 1200; // hi-res-ish
+    canvas.height = 1700;
+
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    if(p.kind==='pdf'){
+      const loadingTask = pdfjsLib.getDocument({data: p.pdfBytes});
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(p.pageIndex+1);
+      const viewport = page.getViewport({scale: 2.0});
+      const tmp = document.createElement('canvas');
+      tmp.width = viewport.width;
+      tmp.height = viewport.height;
+      await page.render({canvasContext: tmp.getContext('2d'), viewport}).promise;
+
+      // contain into canvas
+      const s = Math.min(canvas.width/tmp.width, canvas.height/tmp.height);
+      const w = tmp.width*s, h = tmp.height*s;
+      const x = (canvas.width-w)/2, y=(canvas.height-h)/2;
+      ctx.drawImage(tmp, x,y,w,h);
+    } else {
+      const img = new Image();
+      img.src = p.objectUrl;
+      await img.decode();
+
+      // apply rotation by drawing onto tmp
+      const rot = (p.rotationDeg||0)%360;
+      const tmp = document.createElement('canvas');
+      const tctx = tmp.getContext('2d');
+      if(rot===90 || rot===270){
+        tmp.width = img.height;
+        tmp.height = img.width;
+      } else {
+        tmp.width = img.width;
+        tmp.height = img.height;
+      }
+      tctx.save();
+      tctx.translate(tmp.width/2, tmp.height/2);
+      tctx.rotate(rot*Math.PI/180);
+      tctx.drawImage(img, -img.width/2, -img.height/2);
+      tctx.restore();
+
+      // cover into canvas
+      const s = Math.max(canvas.width/tmp.width, canvas.height/tmp.height);
+      const w = tmp.width*s, h = tmp.height*s;
+      const x = (canvas.width-w)/2, y=(canvas.height-h)/2;
+      ctx.drawImage(tmp, x,y,w,h);
+    }
+
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DinoFiles_page_${String(k).padStart(3,'0')}.png`;
+    a.click();
+    k++;
+    await new Promise(r=>setTimeout(r, 150));
+  }
+
+  out.innerHTML = `<div class="sub">Gotowe: pobrano ${selected.length} plików PNG (jeden po drugim).</div>`;
+};
+</script>
+</body>
+</html>
